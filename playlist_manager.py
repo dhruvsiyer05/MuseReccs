@@ -63,7 +63,7 @@ class PlaylistManager(commands.Cog):
         if playlist_name in self.user_playlists[user_id]:
             await ctx.send(f"You already have a playlist named **'{playlist_name}'**!")
         else:
-            self.user_playlists[user_id][playlist_name]= []
+            self.user_playlists[user_id][playlist_name] = {"songs": [], "public": False}
             await ctx.send(f"Created a new playlist called **{playlist_name}**.")
             self.save_playlists()
 
@@ -79,7 +79,7 @@ class PlaylistManager(commands.Cog):
 
         if user_id not in self.user_playlists or playlist_name not in self.user_playlists[user_id]:
             await ctx.send(f"You do not currently have a playlist with the name **'{playlist_name}'**.")
-        elif len(self.user_playlists[user_id][playlist_name]) >= SONG_LIMIT_PER_PLAYLIST:
+        elif len(self.user_playlists[user_id][playlist_name]["songs"]) >= SONG_LIMIT_PER_PLAYLIST:
             await ctx.send(f"The playlist **'{playlist_name}'** has already reached its maximum song limit of 20 songs. If you wish to free up some space to add more preferable songs, consider using .remove_from_playlist <index> <playlist name>.")
         else:
             loop = asyncio.get_event_loop()
@@ -92,7 +92,7 @@ class PlaylistManager(commands.Cog):
                 'duration': song_info['duration'],
                 'search': search
             }
-            self.user_playlists[user_id][playlist_name].append(song)
+            self.user_playlists[user_id][playlist_name]["songs"].append(song)
             await ctx.send(f"Successfully added **{song['title']}** to the playlist: **{playlist_name}**!")
             self.save_playlists()
 
@@ -102,12 +102,12 @@ class PlaylistManager(commands.Cog):
         user_id = str(ctx.author.id)
         if user_id not in self.user_playlists or playlist_name not in self.user_playlists[user_id]:
             await ctx.send(f"You do not currently have a playlist with the name **'{playlist_name}'**.")
-        elif 1 <= index <= len(self.user_playlists[user_id][playlist_name]):
-            removed_song = self.user_playlists[user_id][playlist_name].pop(index - 1)
+        elif 1 <= index <= len(self.user_playlists[user_id][playlist_name]["songs"]):
+            removed_song = self.user_playlists[user_id][playlist_name]["songs"].pop(index - 1)
             await ctx.send(f"Succesfully removed **{removed_song['title']}** from the playlist: **{playlist_name}**!")
             self.save_playlists()
         else:
-            await ctx.send(f"Invalid index. The playlist '{playlist_name}' has {len(self.user_playlists[user_id][playlist_name])} songs.")
+            await ctx.send(f"Invalid index. The playlist '{playlist_name}' has {len(self.user_playlists[user_id][playlist_name]['songs'])} songs.")
 
 
     @commands.command(name="playlists")
@@ -116,8 +116,8 @@ class PlaylistManager(commands.Cog):
         if user_id in self.user_playlists and self.user_playlists[user_id]:
             playlists = self.user_playlists[user_id]
             embed = discord.Embed(title="Your Playlists", description="Here are your playlists:", color=discord.Color.blue())
-            for playlist_name, songs in playlists.items():
-                embed.add_field(name=playlist_name, value=f"{len(songs)} songs", inline=False)
+            for playlist_name, data in playlists.items():
+                embed.add_field(name=playlist_name, value=f"{len(data['songs'])} songs", inline=False)
             await ctx.send(embed=embed)
         else:
             await ctx.send("You don't have any playlists yet.")
@@ -128,7 +128,7 @@ class PlaylistManager(commands.Cog):
         user_id = str(ctx.author.id)
         if user_id in self.user_playlists and playlist_name in self.user_playlists[user_id]:
             self.load_playlists()
-            songs = self.user_playlists[user_id][playlist_name]
+            songs = self.user_playlists[user_id][playlist_name]["songs"]
             embed = discord.Embed(title=f"Playlist: {playlist_name}", description=f"{len(songs)} songs", color=discord.Color.red())
             for i, song in enumerate(songs, start=1):
                 embed.add_field(name=f"{i}. {song['title']}", value=song['webpage_url'], inline=False)
@@ -149,7 +149,7 @@ class PlaylistManager(commands.Cog):
             await ctx.send("You can't listen to your playlist if you aren't in a voice channel!")
             return
 
-        songlist = self.user_playlists[user_id][playlist_name]
+        songlist = self.user_playlists[user_id][playlist_name]["songs"]
         if not songlist:
             await ctx.send("The chosen playlist is empty!")
             return
@@ -186,8 +186,8 @@ class PlaylistManager(commands.Cog):
             await ctx.send(f"You do not currently have a playlist with the name **'{playlist_name}'**.")
             return
         
-        if len(self.user_playlists[user_id][playlist_name]) > 1:
-            random.shuffle(self.user_playlists[user_id][playlist_name])
+        if len(self.user_playlists[user_id][playlist_name]["songs"]) > 1:
+            random.shuffle(self.user_playlists[user_id][playlist_name]["songs"])
             await ctx.send(f"Your playlist **'{playlist_name}'** has been shuffled!")
             self.save_playlists()
         else:
@@ -252,3 +252,4 @@ class PlaylistManager(commands.Cog):
 
 async def playlists_setup(bot):
     await bot.add_cog(PlaylistManager(bot))
+
